@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "py-shyft"
+version = "0.1.0"
+description = "triton's geyser grpc client in python using shyft.to"
+authors = ["finyl <finlay.peterkin@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+grpcio = "^1.68.1"
+rich = "^13.9.4"
+uvloop = "^0.21.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry-grpc-plugin]
+proto_path = "yellowstone-grpc/yellowstone-grpc-proto/proto"
+python_out = "py_shyft/generated"
+
+[tool.ruff.lint]
+
+select = [
+    "A",   # prevent using keywords that clobber python builtins
+    "B",   # bugbear: security warnings
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "ISC", # implicit string concatenation
+    "UP",  # alert you when better syntax is available in your python version
+    "RUF", # the ruff developer's own rules
+]
+
+ignore = [
+    "E712", # Allow using if x == False, as it's not always equivalent to if x.
+    "E501", # Supress line-too-long warnings: trust black's judgement on this one.
+]
+
+exclude = ["py_shyft/generated"]
