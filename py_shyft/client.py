@@ -1,9 +1,7 @@
 import asyncio
 import os
-import random
 import traceback
 
-import base58
 import grpc.aio
 import uvloop
 from rich.console import Console
