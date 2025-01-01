@@ -11,6 +11,7 @@ grpcio = "^1.68.1"
 rich = "^13.9.4"
 uvloop = "^0.21.0"
 protobuf = "^5.29.2"
+orjson = "^3.10.13"
 
 
 [tool.poetry.group.dev.dependencies]
