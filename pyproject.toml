@@ -10,7 +10,11 @@ python = "^3.13"
 grpcio = "^1.68.1"
 rich = "^13.9.4"
 uvloop = "^0.21.0"
+protobuf = "^5.29.2"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]
