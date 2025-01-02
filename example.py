@@ -1,8 +1,8 @@
 import asyncio
-import uvloop
-from py_shyft.client import ShyftClient
 
-from py_shyft.generated.geyser_pb2 import CommitmentLevel
+import uvloop
+
+from py_shyft.client import ShyftClient
 
 X_TOKEN = "some-api-token"
 
@@ -13,7 +13,7 @@ FILTERS = {
             "filters": [
                 {
                     "memcmp": {
-                        "offset": 560,
+                        "offset": 560,  # serum market address position
                         "base58": "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX",
                     }
                 },
@@ -25,14 +25,19 @@ FILTERS = {
             "filter_by_commitment": True,
         }
     },
-    "commitment": CommitmentLevel.PROCESSED,
+    "commitment": 0,
 }
 
 
 async def main():
     async with ShyftClient(X_TOKEN) as client:
-        async for update in client.subscribe(FILTERS):
+        c = 1
+        stream = await client.subscribe(FILTERS)
+        async for update in stream:
             print(update)
+            if c == 3:
+                break
+            c += 1
 
 
 if __name__ == "__main__":
