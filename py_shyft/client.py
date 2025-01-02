@@ -1,5 +1,3 @@
-from collections.abc import AsyncGenerator
-
 import backoff
 import grpc.aio
 import orjson
@@ -29,17 +27,19 @@ from .generated.geyser_pb2_grpc import GeyserStub
 
 
 class GrpcConnectionManager:
-    def __init__(self, token: str, endpoint: str):
+    def __init__(self, token: str, endpoint: str, console: Console):
         self.token = token
         self.endpoint = endpoint
         self.channel = None
         self.stub = None
         self._closed = False
+        self.console = console
+        self._retry_count = 0
 
     async def get_stub(self) -> GeyserStub:
-        if (
-            not self.channel
-            or self.channel.get_state() != grpc.ChannelConnectivity.READY
+        if not self.channel or self.channel.get_state() in (
+            grpc.ChannelConnectivity.TRANSIENT_FAILURE,
+            grpc.ChannelConnectivity.SHUTDOWN,
         ):
             await self.connect()
         return self.stub
@@ -49,6 +49,12 @@ class GrpcConnectionManager:
         if self._closed:
             raise ConnectionError("Connection manager is closed")
 
+        self._retry_count += 1
+        if self._retry_count > 1:
+            self.console.log(
+                f"Reconnecting to {self.endpoint}... (attempt {self._retry_count})"
+            )
+
         credentials = grpc.composite_channel_credentials(
             grpc.ssl_channel_credentials(),
             grpc.metadata_call_credentials(
@@ -57,6 +63,8 @@ class GrpcConnectionManager:
         )
         self.channel = grpc.aio.secure_channel(f"{self.endpoint}:443", credentials)
         self.stub = GeyserStub(self.channel)
+
+        self.console.log(f"Connected to {self.endpoint}")
 
     async def close(self):
         self._closed = True
@@ -73,24 +81,17 @@ class ShyftClient:
         if not self.endpoint:
             raise ValueError(f"Invalid region: {region}")
 
-        self.connection_manager = GrpcConnectionManager(self.token, self.endpoint)
+        self.connection_manager = GrpcConnectionManager(
+            self.token, self.endpoint, self.console
+        )
 
     async def __aenter__(self):
         await self.connection_manager.connect()
-        await self.check_connection()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.connection_manager.close()
         self.console.log("Closed all connections")
-
-    async def check_connection(self):
-        pong = await self.ping()
-        if pong.count != 1:
-            raise RuntimeError(
-                "Ping failed, secure connection could not be established"
-            )
-        self.console.log("Ping successful, secure connection established!")
 
     async def ping(self, count: int = 1) -> PongResponse:
         try:
@@ -99,11 +100,12 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.console.log(f"Ping RPC error: {e.code()}")
             self.console.log(f"Details: {e.details()}")
+            raise
         except Exception as e:
             self.console.log(f"Unexpected error: {e}")
 
     async def get_latest_blockhash(
-        self, commitment: CommitmentLevel = CommitmentLevel.PROCESSED
+        self, commitment: CommitmentLevel | int = CommitmentLevel.PROCESSED
     ) -> GetLatestBlockhashResponse:
         try:
             stub = await self.connection_manager.get_stub()
@@ -113,11 +115,12 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.console.log(f"Blockhash RPC error: {e.code()}")
             self.console.log(f"Details: {e.details()}")
+            raise
         except Exception as e:
             self.console.log(f"Unexpected error: {e}")
 
     async def get_block_height(
-        self, commitment: CommitmentLevel = CommitmentLevel.PROCESSED
+        self, commitment: CommitmentLevel | int = CommitmentLevel.PROCESSED
     ) -> GetBlockHeightResponse:
         try:
             stub = await self.connection_manager.get_stub()
@@ -127,11 +130,12 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.console.log(f"Block height RPC error: {e.code()}")
             self.console.log(f"Details: {e.details()}")
+            raise
         except Exception as e:
             self.console.log(f"Unexpected error: {e}")
 
     async def get_slot(
-        self, commitment: CommitmentLevel = CommitmentLevel.PROCESSED
+        self, commitment: CommitmentLevel | int = CommitmentLevel.PROCESSED
     ) -> GetSlotResponse:
         try:
             stub = await self.connection_manager.get_stub()
@@ -139,11 +143,14 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.console.log(f"Slot RPC error: {e.code()}")
             self.console.log(f"Details: {e.details()}")
+            raise
         except Exception as e:
             self.console.log(f"Unexpected error: {e}")
 
     async def is_blockhash_valid(
-        self, blockhash: str, commitment: CommitmentLevel = CommitmentLevel.PROCESSED
+        self,
+        blockhash: str,
+        commitment: CommitmentLevel | int = CommitmentLevel.PROCESSED,
     ) -> IsBlockhashValidResponse:
         try:
             stub = await self.connection_manager.get_stub()
@@ -153,6 +160,7 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.console.log(f"Blockhash validation RPC error: {e.code()}")
             self.console.log(f"Details: {e.details()}")
+            raise
         except Exception as e:
             self.console.log(f"Unexpected error: {e}")
 
@@ -163,27 +171,25 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.console.log(f"Version RPC error: {e.code()}")
             self.console.log(f"Details: {e.details()}")
+            raise
         except Exception as e:
             self.console.log(f"Unexpected error: {e}")
 
-    async def subscribe(self, filters: dict) -> AsyncGenerator[SubscribeUpdate, None]:
-        while True:
-            try:
-                stub = await self.connection_manager.get_stub()
-                request = self.create_subscribe_request(filters)
-                async for message in stub.Subscribe(iter([request])):
-                    yield message
-            except grpc.RpcError as e:
-                self.console.log(f"Subscription RPC error: {e.code()}")
-                self.console.log(f"Details: {e.details()}")
-                continue
-            except Exception as e:
-                self.console.log(f"Unexpected error: {e}")
-                break
-
     def create_subscribe_request(self, filters: dict) -> SubscribeRequest:
         try:
-            request = Parse(orjson.dumps(filters), SubscribeRequest())
-            return request
+            return Parse(orjson.dumps(filters), SubscribeRequest())
         except Exception as e:
-            raise ValueError("Invalid filters") from e
+            self.console.log(f"Error parsing filters: {e}")
+            return SubscribeRequest()
+
+    async def subscribe(self, filters: dict) -> SubscribeUpdate:
+        try:
+            stub = await self.connection_manager.get_stub()
+            request = self.create_subscribe_request(filters)
+            return stub.Subscribe(iter([request]))
+        except grpc.RpcError as e:
+            self.console.log(f"Subscription RPC error: {e.code()}")
+            self.console.log(f"Details: {e.details()}")
+            raise
+        except Exception as e:
+            self.console.log(f"Unexpected error: {e}")
