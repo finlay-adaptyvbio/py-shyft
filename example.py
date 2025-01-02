@@ -8,13 +8,13 @@ X_TOKEN = "some-api-token"
 
 FILTERS = {
     "accounts": {
-        "usdc_filter": {
-            "owner": ["TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"],
+        "raydium": {
+            "owner": ["675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"],
             "filters": [
                 {
                     "memcmp": {
-                        "offset": 0,
-                        "base58": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                        "offset": 560,
+                        "base58": "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX",
                     }
                 },
             ],
@@ -31,8 +31,7 @@ FILTERS = {
 
 async def main():
     async with ShyftClient(X_TOKEN) as client:
-        stream = await client.subscribe(FILTERS)
-        async for update in stream:
+        async for update in client.subscribe(FILTERS):
             print(update)
 
 
