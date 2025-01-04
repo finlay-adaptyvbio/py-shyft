@@ -1,8 +1,7 @@
 import asyncio
-
 import uvloop
-
 from py_shyft.client import ShyftClient
+from py_shyft.logging_config import setup_logging
 
 X_TOKEN = "some-api-token"
 
@@ -30,6 +29,7 @@ FILTERS = {
 
 
 async def main():
+    logger = setup_logging(__name__)
     async with ShyftClient(X_TOKEN) as client:
         c = 1
         stream = await client.subscribe(FILTERS)

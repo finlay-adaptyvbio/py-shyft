@@ -1,10 +1,13 @@
+import asyncio
 import backoff
 import grpc.aio
+import logging
 import orjson
 from google.protobuf.json_format import Parse
-from rich.console import Console
+from typing import AsyncIterator
 
 from py_shyft import REGIONS
+from py_shyft.logging_config import setup_logging
 
 from .generated.geyser_pb2 import (
     CommitmentLevel,
@@ -27,33 +30,40 @@ from .generated.geyser_pb2_grpc import GeyserStub
 
 
 class GrpcConnectionManager:
-    def __init__(self, token: str, endpoint: str, console: Console):
+    def __init__(self, token: str, endpoint: str):
         self.token = token
         self.endpoint = endpoint
         self.channel = None
         self.stub = None
         self._closed = False
-        self.console = console
         self._retry_count = 0
+        self._lock = asyncio.Lock()
+        self.logger = setup_logging(__name__)
 
     async def get_stub(self) -> GeyserStub:
-        if not self.channel or self.channel.get_state() in (
-            grpc.ChannelConnectivity.TRANSIENT_FAILURE,
-            grpc.ChannelConnectivity.SHUTDOWN,
-        ):
-            await self.connect()
-        return self.stub
+        async with self._lock:
+            if not self.channel or self.channel.get_state() in (
+                grpc.ChannelConnectivity.TRANSIENT_FAILURE,
+                grpc.ChannelConnectivity.SHUTDOWN,
+            ):
+                await self.connect()
+            return self.stub
 
-    @backoff.on_exception(backoff.expo, (grpc.RpcError, ConnectionError), max_time=300)
+    @backoff.on_exception(
+        backoff.expo,
+        (grpc.RpcError, ConnectionError),
+        max_time=300,
+        on_backoff=lambda details: logging.getLogger(__name__).warning(
+            f"Backing off {details['wait']:0.1f} seconds after {details['tries']} tries"
+        )
+    )
     async def connect(self):
         if self._closed:
             raise ConnectionError("Connection manager is closed")
 
         self._retry_count += 1
         if self._retry_count > 1:
-            self.console.log(
-                f"Reconnecting to {self.endpoint}... (attempt {self._retry_count})"
-            )
+            self.logger.info(f"Reconnecting to {self.endpoint}... (attempt {self._retry_count})")
 
         credentials = grpc.composite_channel_credentials(
             grpc.ssl_channel_credentials(),
@@ -61,10 +71,22 @@ class GrpcConnectionManager:
                 lambda context, callback: callback([("x-token", self.token)], None)
             ),
         )
-        self.channel = grpc.aio.secure_channel(f"{self.endpoint}:443", credentials)
+        
+        options = [
+            ('grpc.keepalive_time_ms', 10000),
+            ('grpc.keepalive_timeout_ms', 5000),
+            ('grpc.keepalive_permit_without_calls', 1),
+            ('grpc.http2.max_pings_without_data', 0),
+        ]
+        
+        self.channel = grpc.aio.secure_channel(
+            f"{self.endpoint}:443",
+            credentials,
+            options=options
+        )
         self.stub = GeyserStub(self.channel)
-
-        self.console.log(f"Connected to {self.endpoint}")
+        
+        self.logger.info(f"Connected to {self.endpoint}")
 
     async def close(self):
         self._closed = True
@@ -74,16 +96,13 @@ class GrpcConnectionManager:
 
 class ShyftClient:
     def __init__(self, token: str, region: str = "EU"):
-        self.console = Console(log_time_format="%Y-%m-%d %H:%M:%S.%f")
-
         self.token = token
         self.endpoint = REGIONS.get(region)
         if not self.endpoint:
             raise ValueError(f"Invalid region: {region}")
 
-        self.connection_manager = GrpcConnectionManager(
-            self.token, self.endpoint, self.console
-        )
+        self.logger = setup_logging(__name__)
+        self.connection_manager = GrpcConnectionManager(self.token, self.endpoint)
 
     async def __aenter__(self):
         await self.connection_manager.connect()
@@ -98,11 +117,11 @@ class ShyftClient:
             stub = await self.connection_manager.get_stub()
             return await stub.Ping(PingRequest(count=count))
         except grpc.RpcError as e:
-            self.console.log(f"Ping RPC error: {e.code()}")
-            self.console.log(f"Details: {e.details()}")
+            self.logger.error(f"Ping RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
-            self.console.log(f"Unexpected error: {e}")
+            self.logger.exception("Unexpected error during ping operation")
+            raise
 
     async def get_latest_blockhash(
         self, commitment: CommitmentLevel | int = CommitmentLevel.PROCESSED
