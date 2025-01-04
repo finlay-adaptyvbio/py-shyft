@@ -110,7 +110,7 @@ class ShyftClient:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.connection_manager.close()
-        self.console.log("Closed all connections")
+        self.logger.info("Closed all connections")
 
     async def ping(self, count: int = 1) -> PongResponse:
         try:
@@ -132,11 +132,11 @@ class ShyftClient:
                 GetLatestBlockhashRequest(commitment=commitment)
             )
         except grpc.RpcError as e:
-            self.console.log(f"Blockhash RPC error: {e.code()}")
-            self.console.log(f"Details: {e.details()}")
+            self.logger.error(f"Blockhash RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
-            self.console.log(f"Unexpected error: {e}")
+            self.logger.exception("Unexpected error during blockhash operation")
+            raise
 
     async def get_block_height(
         self, commitment: CommitmentLevel | int = CommitmentLevel.PROCESSED
@@ -147,11 +147,11 @@ class ShyftClient:
                 GetBlockHeightRequest(commitment=commitment)
             )
         except grpc.RpcError as e:
-            self.console.log(f"Block height RPC error: {e.code()}")
-            self.console.log(f"Details: {e.details()}")
+            self.logger.error(f"Block height RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
-            self.console.log(f"Unexpected error: {e}")
+            self.logger.exception("Unexpected error during block height operation")
+            raise
 
     async def get_slot(
         self, commitment: CommitmentLevel | int = CommitmentLevel.PROCESSED
@@ -160,11 +160,11 @@ class ShyftClient:
             stub = await self.connection_manager.get_stub()
             return await stub.GetSlot(GetSlotRequest(commitment=commitment))
         except grpc.RpcError as e:
-            self.console.log(f"Slot RPC error: {e.code()}")
-            self.console.log(f"Details: {e.details()}")
+            self.logger.error(f"Slot RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
-            self.console.log(f"Unexpected error: {e}")
+            self.logger.exception("Unexpected error during slot operation")
+            raise
 
     async def is_blockhash_valid(
         self,
@@ -177,28 +177,28 @@ class ShyftClient:
                 IsBlockhashValidRequest(blockhash=blockhash, commitment=commitment)
             )
         except grpc.RpcError as e:
-            self.console.log(f"Blockhash validation RPC error: {e.code()}")
-            self.console.log(f"Details: {e.details()}")
+            self.logger.error(f"Blockhash validation RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
-            self.console.log(f"Unexpected error: {e}")
+            self.logger.exception("Unexpected error during blockhash validation")
+            raise
 
     async def get_version(self) -> GetVersionResponse:
         try:
             stub = await self.connection_manager.get_stub()
             return await stub.GetVersion(GetVersionRequest())
         except grpc.RpcError as e:
-            self.console.log(f"Version RPC error: {e.code()}")
-            self.console.log(f"Details: {e.details()}")
+            self.logger.error(f"Version RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
-            self.console.log(f"Unexpected error: {e}")
+            self.logger.exception("Unexpected error during version check")
+            raise
 
     def create_subscribe_request(self, filters: dict) -> SubscribeRequest:
         try:
             return Parse(orjson.dumps(filters), SubscribeRequest())
         except Exception as e:
-            self.console.log(f"Error parsing filters: {e}")
+            self.logger.error(f"Error parsing filters: {e}")
             return SubscribeRequest()
 
     async def subscribe(self, filters: dict) -> SubscribeUpdate:
@@ -207,8 +207,8 @@ class ShyftClient:
             request = self.create_subscribe_request(filters)
             return stub.Subscribe(iter([request]))
         except grpc.RpcError as e:
-            self.console.log(f"Subscription RPC error: {e.code()}")
-            self.console.log(f"Details: {e.details()}")
+            self.logger.error(f"Subscription RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
-            self.console.log(f"Unexpected error: {e}")
+            self.logger.exception("Unexpected error during subscription")
+            raise
