@@ -55,7 +55,7 @@ class GrpcConnectionManager:
         max_time=300,
         on_backoff=lambda details: logging.getLogger(__name__).warning(
             f"Backing off {details['wait']:0.1f} seconds after {details['tries']} tries"
-        )
+        ),
     )
     async def connect(self):
         if self._closed:
@@ -63,7 +63,9 @@ class GrpcConnectionManager:
 
         self._retry_count += 1
         if self._retry_count > 1:
-            self.logger.info(f"Reconnecting to {self.endpoint}... (attempt {self._retry_count})")
+            self.logger.info(
+                f"Reconnecting to {self.endpoint}... (attempt {self._retry_count})"
+            )
 
         credentials = grpc.composite_channel_credentials(
             grpc.ssl_channel_credentials(),
@@ -71,21 +73,19 @@ class GrpcConnectionManager:
                 lambda context, callback: callback([("x-token", self.token)], None)
             ),
         )
-        
+
         options = [
-            ('grpc.keepalive_time_ms', 10000),
-            ('grpc.keepalive_timeout_ms', 5000),
-            ('grpc.keepalive_permit_without_calls', 1),
-            ('grpc.http2.max_pings_without_data', 0),
+            ("grpc.keepalive_time_ms", 10000),
+            ("grpc.keepalive_timeout_ms", 5000),
+            ("grpc.keepalive_permit_without_calls", 1),
+            ("grpc.http2.max_pings_without_data", 0),
         ]
-        
+
         self.channel = grpc.aio.secure_channel(
-            f"{self.endpoint}:443",
-            credentials,
-            options=options
+            f"{self.endpoint}:443", credentials, options=options
         )
         self.stub = GeyserStub(self.channel)
-        
+
         self.logger.info(f"Connected to {self.endpoint}")
 
     async def close(self):
@@ -103,12 +103,15 @@ class ShyftClient:
 
         self.logger = setup_logging(__name__)
         self.connection_manager = GrpcConnectionManager(self.token, self.endpoint)
+        self.stream = None
 
     async def __aenter__(self):
         await self.connection_manager.connect()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.stream:
+            await self.unsubscribe()
         await self.connection_manager.close()
         self.logger.info("Closed all connections")
 
@@ -177,7 +180,9 @@ class ShyftClient:
                 IsBlockhashValidRequest(blockhash=blockhash, commitment=commitment)
             )
         except grpc.RpcError as e:
-            self.logger.error(f"Blockhash validation RPC error: {e.code()} - {e.details()}")
+            self.logger.error(
+                f"Blockhash validation RPC error: {e.code()} - {e.details()}"
+            )
             raise
         except Exception as e:
             self.logger.exception("Unexpected error during blockhash validation")
@@ -205,10 +210,23 @@ class ShyftClient:
         try:
             stub = await self.connection_manager.get_stub()
             request = self.create_subscribe_request(filters)
-            return stub.Subscribe(iter([request]))
+            self.stream = stub.Subscribe(iter([request]))
+            await self.stream.wait_for_connection()
+            return self.stream
         except grpc.RpcError as e:
             self.logger.error(f"Subscription RPC error: {e.code()} - {e.details()}")
             raise
         except Exception as e:
             self.logger.exception("Unexpected error during subscription")
+            raise
+
+    async def unsubscribe(self):
+        try:
+            if self.stream:
+                self.stream.cancel()
+        except grpc.RpcError as e:
+            self.logger.error(f"Unsubscribe RPC error: {e.code()} - {e.details()}")
+            raise
+        except Exception as e:
+            self.logger.exception("Unexpected error during unsubscription")
             raise
