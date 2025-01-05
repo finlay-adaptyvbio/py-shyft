@@ -1,10 +1,10 @@
 import asyncio
+import logging
+
 import backoff
 import grpc.aio
-import logging
 import orjson
 from google.protobuf.json_format import Parse
-from typing import AsyncIterator
 
 from py_shyft import REGIONS
 from py_shyft.logging_config import setup_logging
@@ -122,7 +122,7 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.logger.error(f"Ping RPC error: {e.code()} - {e.details()}")
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during ping operation")
             raise
 
@@ -137,7 +137,7 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.logger.error(f"Blockhash RPC error: {e.code()} - {e.details()}")
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during blockhash operation")
             raise
 
@@ -152,7 +152,7 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.logger.error(f"Block height RPC error: {e.code()} - {e.details()}")
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during block height operation")
             raise
 
@@ -165,7 +165,7 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.logger.error(f"Slot RPC error: {e.code()} - {e.details()}")
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during slot operation")
             raise
 
@@ -184,7 +184,7 @@ class ShyftClient:
                 f"Blockhash validation RPC error: {e.code()} - {e.details()}"
             )
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during blockhash validation")
             raise
 
@@ -195,7 +195,7 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.logger.error(f"Version RPC error: {e.code()} - {e.details()}")
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during version check")
             raise
 
@@ -216,7 +216,7 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.logger.error(f"Subscription RPC error: {e.code()} - {e.details()}")
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during subscription")
             raise
 
@@ -227,6 +227,6 @@ class ShyftClient:
         except grpc.RpcError as e:
             self.logger.error(f"Unsubscribe RPC error: {e.code()} - {e.details()}")
             raise
-        except Exception as e:
+        except Exception:
             self.logger.exception("Unexpected error during unsubscription")
             raise
