@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import AsyncGenerator
 
 import backoff
 import grpc.aio
@@ -206,7 +207,7 @@ class ShyftClient:
             self.logger.error(f"Error parsing filters: {e}")
             return SubscribeRequest()
 
-    async def subscribe(self, filters: dict) -> SubscribeUpdate:
+    async def subscribe(self, filters: dict) -> AsyncGenerator[SubscribeUpdate, None]:
         try:
             stub = await self.connection_manager.get_stub()
             request = self.create_subscribe_request(filters)
