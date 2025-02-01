@@ -96,7 +96,7 @@ class GrpcConnectionManager:
 
 
 class ShyftClient:
-    def __init__(self, token: str, region: str = "EU"):
+    def __init__(self, token: str, region: str = "FRA"):
         self.token = token
         self.endpoint = REGIONS.get(region)
         if not self.endpoint:
