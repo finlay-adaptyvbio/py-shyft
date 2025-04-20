@@ -24,7 +24,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry-grpc-plugin]
 proto_path = "yellowstone-grpc/yellowstone-grpc-proto/proto"
-python_out = "py_shyft/generated"
+python_out = "src/py_shyft/generated"
 
 [tool.ruff.lint]
 
