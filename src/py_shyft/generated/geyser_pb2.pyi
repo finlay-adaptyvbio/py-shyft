@@ -57,21 +57,38 @@ class _CommitmentLevelEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper
     PROCESSED: _CommitmentLevel.ValueType  # 0
     CONFIRMED: _CommitmentLevel.ValueType  # 1
     FINALIZED: _CommitmentLevel.ValueType  # 2
-    FIRST_SHRED_RECEIVED: _CommitmentLevel.ValueType  # 3
-    COMPLETED: _CommitmentLevel.ValueType  # 4
-    CREATED_BANK: _CommitmentLevel.ValueType  # 5
-    DEAD: _CommitmentLevel.ValueType  # 6
 
 class CommitmentLevel(_CommitmentLevel, metaclass=_CommitmentLevelEnumTypeWrapper): ...
 
 PROCESSED: CommitmentLevel.ValueType  # 0
 CONFIRMED: CommitmentLevel.ValueType  # 1
 FINALIZED: CommitmentLevel.ValueType  # 2
-FIRST_SHRED_RECEIVED: CommitmentLevel.ValueType  # 3
-COMPLETED: CommitmentLevel.ValueType  # 4
-CREATED_BANK: CommitmentLevel.ValueType  # 5
-DEAD: CommitmentLevel.ValueType  # 6
 global___CommitmentLevel = CommitmentLevel
+
+class _SlotStatus:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _SlotStatusEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_SlotStatus.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    SLOT_PROCESSED: _SlotStatus.ValueType  # 0
+    SLOT_CONFIRMED: _SlotStatus.ValueType  # 1
+    SLOT_FINALIZED: _SlotStatus.ValueType  # 2
+    SLOT_FIRST_SHRED_RECEIVED: _SlotStatus.ValueType  # 3
+    SLOT_COMPLETED: _SlotStatus.ValueType  # 4
+    SLOT_CREATED_BANK: _SlotStatus.ValueType  # 5
+    SLOT_DEAD: _SlotStatus.ValueType  # 6
+
+class SlotStatus(_SlotStatus, metaclass=_SlotStatusEnumTypeWrapper): ...
+
+SLOT_PROCESSED: SlotStatus.ValueType  # 0
+SLOT_CONFIRMED: SlotStatus.ValueType  # 1
+SLOT_FINALIZED: SlotStatus.ValueType  # 2
+SLOT_FIRST_SHRED_RECEIVED: SlotStatus.ValueType  # 3
+SLOT_COMPLETED: SlotStatus.ValueType  # 4
+SLOT_CREATED_BANK: SlotStatus.ValueType  # 5
+SLOT_DEAD: SlotStatus.ValueType  # 6
+global___SlotStatus = SlotStatus
 
 @typing.final
 class SubscribeRequest(google.protobuf.message.Message):
@@ -374,15 +391,21 @@ class SubscribeRequestFilterSlots(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     FILTER_BY_COMMITMENT_FIELD_NUMBER: builtins.int
+    INTERSLOT_UPDATES_FIELD_NUMBER: builtins.int
     filter_by_commitment: builtins.bool
+    interslot_updates: builtins.bool
     def __init__(
         self,
         *,
         filter_by_commitment: builtins.bool | None = ...,
+        interslot_updates: builtins.bool | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["_filter_by_commitment", b"_filter_by_commitment", "filter_by_commitment", b"filter_by_commitment"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_filter_by_commitment", b"_filter_by_commitment", "filter_by_commitment", b"filter_by_commitment"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["_filter_by_commitment", b"_filter_by_commitment", "_interslot_updates", b"_interslot_updates", "filter_by_commitment", b"filter_by_commitment", "interslot_updates", b"interslot_updates"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["_filter_by_commitment", b"_filter_by_commitment", "_interslot_updates", b"_interslot_updates", "filter_by_commitment", b"filter_by_commitment", "interslot_updates", b"interslot_updates"]) -> None: ...
+    @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_filter_by_commitment", b"_filter_by_commitment"]) -> typing.Literal["filter_by_commitment"] | None: ...
+    @typing.overload
+    def WhichOneof(self, oneof_group: typing.Literal["_interslot_updates", b"_interslot_updates"]) -> typing.Literal["interslot_updates"] | None: ...
 
 global___SubscribeRequestFilterSlots = SubscribeRequestFilterSlots
 
@@ -640,14 +663,14 @@ class SubscribeUpdateSlot(google.protobuf.message.Message):
     DEAD_ERROR_FIELD_NUMBER: builtins.int
     slot: builtins.int
     parent: builtins.int
-    status: global___CommitmentLevel.ValueType
+    status: global___SlotStatus.ValueType
     dead_error: builtins.str
     def __init__(
         self,
         *,
         slot: builtins.int = ...,
         parent: builtins.int | None = ...,
-        status: global___CommitmentLevel.ValueType = ...,
+        status: global___SlotStatus.ValueType = ...,
         dead_error: builtins.str | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_dead_error", b"_dead_error", "_parent", b"_parent", "dead_error", b"dead_error", "parent", b"parent"]) -> builtins.bool: ...
