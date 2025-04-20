@@ -1,9 +1,8 @@
 import logging
 import sys
-from typing import Optional
 
 
-def setup_logging(name: str, log_level: Optional[str] = None) -> logging.Logger:
+def setup_logging(name: str, log_level: str | None = None) -> logging.Logger:
     """Configure logging with a consistent format across the application."""
     logger = logging.getLogger(name)
 

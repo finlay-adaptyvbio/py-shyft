@@ -207,7 +207,7 @@ class ShyftClient:
             self.logger.error(f"Error parsing filters: {e}")
             return SubscribeRequest()
 
-    async def subscribe(self, filters: dict) -> AsyncGenerator[SubscribeUpdate, None]:
+    async def subscribe(self, filters: dict) -> AsyncGenerator[SubscribeUpdate]:
         try:
             stub = await self.connection_manager.get_stub()
             request = self.create_subscribe_request(filters)
