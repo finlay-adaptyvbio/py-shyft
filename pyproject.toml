@@ -1,18 +1,17 @@
 [project]
 name = "py-shyft"
-version = "1.0.1"
 description = "triton's geyser grpc client in python using shyft.to"
+version = "1.0.1"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = ["grpcio", "protobuf", "uvloop", "orjson", "backoff"]
 
-[project.optional-dependencies]
-dev = ["ipykernel"]
+[dependency-groups]
+dev = ["ipykernel", "ipywidgets", "plotly", "nbformat"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
 
 [tool.hatch.build.hooks.protobuf]
 dependencies = ["hatch-protobuf"]
